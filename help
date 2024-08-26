@@ -1,0 +1,260 @@
+использование сжатия в ванильном постгресе:
+./configure --without-icu --prefix=/Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/install --with-lz4
+CREATE TABLE cinemas_2(id serial, name text COMPRESSION lz4, location text COMPRESSION lz4);
+
+export PATH=$PATH:/Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/install/bin
+
+To start:
+make clean
+./configure --without-icu --prefix=/Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/install --with-lz4
+make all -j9
+make install
+rm -rf pgdata
+initdb -D pgdata
+
+
+pg_ctl -D pgdata -l logfile start
+
+--------------
+./configure --without-icu --prefix=/Users/daniela/Desktop/research_work/final_qualifying_work/vanilla/postgresql/install
+export PATH=$PATH:/Users/daniela/Desktop/research_work/final_qualifying_work/vanilla/postgresql/install/bin
+make all -j8
+make install
+mkdir pgdata
+
+initdb -D /Users/daniela/Desktop/research_work/final_qualifying_work/vanilla/postgresql/pgdata
+--------------
+
+initdb -D /Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/pgdata -l logfile
+
+pg_ctl -D /Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/pgdata -l logfile start
+psql -d postgres
+
+
+"/Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/install/bin/postgres" --single -F -O -j -c search_path=pg_catalog -D /Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/pgdata -c exit_on_error=true -c log_checkpoints=false template1
+ERROR:
+postgres: could not access the server configuration file "/Users/daniela/Desktop/research_work/final_qualifying_work/brotli_into_postgres/pgdata/postgresql.conf": No such file or directory
+
+PostgreSQL stand-alone backend 17devel
+backend> 
+
+To restart:
+make clean
+rm -rf install/
+rm -rf pgdata/
+rm -rf bin/
+rm -rf include/
+rm -rf lib/
+rm -rf share/
+
+
+log_min_messages=debug5
+
+test command:
+CREATE TABLESPACE my_tablespace LOCATION '/Users/daniela/Desktop/my_tablespace';
+
+CREATE TABLESPACE my_tablespace LOCATION '/Users/daniela/Desktop/my_tablespace' WITH (compression=true);
+
+CREATE TABLE cinemas (id serial, name text, location text) TABLESPACE my_tablespace;
+INSERT INTO cinemas DEFAULT VALUES;
+INSERT INTO cinemas (name, location) VALUES('name', 'location');
+
+INSERT INTO cinemas (name, location) SELECT md5(random()::text), md5(random()::text) || '@gmail.com' FROM generate_series(1, 100);
+
+CHECKPOINT;
+DROP TABLESPACE my_tablespace;
+
+PostgreSQL Database Management System
+=====================================
+
+This directory contains the source code distribution of the PostgreSQL
+database management system.
+
+PostgreSQL is an advanced object-relational database management system
+that supports an extended subset of the SQL standard, including
+transactions, foreign keys, subqueries, triggers, user-defined types
+and functions.  This distribution also contains C language bindings.
+
+Copyright and license information can be found in the file COPYRIGHT.
+
+General documentation about this version of PostgreSQL can be found at
+<https://www.postgresql.org/docs/devel/>.  In particular, information
+about building PostgreSQL from the source code can be found at
+<https://www.postgresql.org/docs/devel/installation.html>.
+
+The latest version of this software, and related software, may be
+obtained at <https://www.postgresql.org/download/>.  For more information
+look at our web site located at <https://www.postgresql.org/>.
+
+lldb -c /cores/core.3906
+bt
+
+STATEMENT:  CREATE TABLE
+heap_form_tuple next heap_compute_data_size
+
+STATEMENT:  INSERT
+heap_form_tuple next heap_compute_data_size
+toast_tuple_try_compression
+
+
+tablecmds.c:1310
+
+InsertOneTuple(); что это?
+
+
+short insert:
+my log heap_form_tuple next heap_compute_data_size
+
+my log in heapam_tuple_insert next heap_insert
+my log in heap_insert next heap_prepare_insert
+my log heap_prepare_insert next mey be heap_toast_insert_or_update
+
+
+long insert:
+my log heap_form_tuple next heap_compute_data_size
+
+my log in heapam_tuple_insert next heap_insert
+my log in heap_insert next heap_prepare_insert
+my log heap_prepare_insert next mey be heap_toast_insert_or_update
+my log heap_toast_insert_or_update next some toast_tuple_try_compression
+my log in toast_tuple_try_compression next  toast_compress_datum
+
+my log into toast_compress_datum
+	
+my log use pglz_compress_datum
+	
+go to pglz_compress_datum
+
+
+указатель на heapam_tuple_insert записывается в массив heapam_methods
+
+используется
+  в функции heapam_methods heap_tableam_handler, записывается в массив fmgr_builtins
+  в функции GetHeapamTableAmRoutine которая используется в heap_getnext и в formrdesc
+
+атрибуты таблицы инициализируются в toast_tuple_init из аттрибутов видимо запроса???
+
+поле ttc_rel содержит поле attcompression = значение параметра сжатия
+
+
+в table_tuple_insert происходит обращение к tuple_insert
+в simple_table_tuple_insert вызывается table_tuple_insert
+in intorel_receive next table_tuple_insert
+
+my log in ExecutorStart next standard_ExecutorStart
+my log standard_ExucutorStart next InitPlan
+my log in InitPlan next ExecInitNode planstate
+my log in ExecInitNode next ExecInitModifyTable
+my log in ExecInitModifyTable next ExecModifyTable
+
+my log heap_form_tuple next heap_compute_data_size
+my log heap_compute_data_size
+
+my log in ExecModifyTable next ExecInsert
+my log in ExecInsert next table_tuple_insert
+my log in table_tuple_insert
+my log in heapam_tuple_insert next heap_insert
+my log in heap_insert next heap_prepare_insert
+my log heap_prepare_insert next mey be heap_toast_insert_or_update
+my log heap_toast_insert_or_update next some toast_tuple_try_compression
+
+my log heap_compute_data_size
+
+my log in toast_tuple_try_compression next  toast_compress_datum
+
+my log into toast_compress_datum
+my log use pglz_compress_datum
+
+WARNING:	go to pglz_compress_datum
+
+my log heap_compute_data_size
+
+exec_simple_query
+exec_execute_message
+	PortalRun
+
+PortalRunFetch
+PortalRun
+	FillPortalStore
+
+
+функции связанные с компрессией:
+g_int_options
+process_data_packets (parse_compressed_data)
+init_compress
+struct PGP_Context
+eror PXE_PGP_UNSUPPORTED_COMPR, PXE_PGP_COMPRESSION_ERROR
+
+struct pg_conn (sslcompression)
+это что нахер? VARLENA_EXTSIZE_MASK, va_compressed, VARDATA_COMPRESSED_GET_EXTSIZE
+
+VARATT_EXTERNAL_SET_SIZE_AND_COMPRESS_METHOD
+VARATT_EXTERNAL_IS_COMPRESSED
+
+toast_tuple_init: исходя из ttc->ttc_rel->rd_att для каждого стобца проставляется его сжатие
+
+ ttc->ttc_attr[i].tai_compression = ttc->ttc_rel->rd_att[i].attcompression
+ 
+
+ttc->ttc_attr[i].tai_compression = ToastTupleContext->*ToastAttrInfo[i].tai_compression(char)
+
+ttc->ttc_rel->rd_att[i].attcompression = ToastTupleContext->Relation=RelationData->*TupleDesc=TupleDescData->FormData_pg_attribute.attcompression(char)
+
+ dblink_build_sql_insert
+	get_rel_from_relname
+ 	get_sql_insert
+
+
+PostgresMain
+	exec_simple_query
+		PortalRun
+			PortalRunMulti (in else?)
+				PortalRunUtility
+					ProcessUtility
+						standard_ProcessUtility
+							ProcessUtilitySlow
+						standard_ProcessUtility
+							ProcessUtilitySlow
+								DefineSequence
+									DefineRelation
+										BuildDescForRelation
+											GetAttributeCompression
+							ProcessUtilitySlow
+								DefineRelation
+									BuildDescForRelation
+										GetAttributeCompression
+
+pg_class = FormData_pg_class
+
+InsertOneTuple
+	simple_heap_insert
+CatalogTupleInsert
+	simple_heap_insert
+CatalogTupleInsertWithInfo
+	simple_heap_insert
+
+TableAmRoutine heapam_methods 
+	.tuple_insert
+		heapam_tuple_insert
+	.tuple_insert_speculative
+		heapam_tuple_insert_speculative
+
+heap_insert
+	heap_prepare_insert
+		heap_toast_insert_or_update
+			toast_tuple_externalize
+				toast_save_datum
+					heap_insert
+
+WARNING:  my log in PostgresMain next exec_simple_query
+WARNING:  my log in exec_simple_query next PortalRun
+WARNING:  my log in in PortalRun next PortalRunMulti
+WARNING:  my log in PortalRunMulti in else
+WARNING:  my log in PortalRunMulti next PortalRunUtility
+WARNING:  my log in PortalRunUtility
+WARNING:  my log in ProcessUtility
+WARNING:  my log in standard_ProcessUtility next some ProcessUtilitySlow
+WARNING:  
+my log in heap_insert next heap_prepare_insert
+
+WARNING:  my log heap_prepare_insert next mey be heap_toast_insert_or_update
